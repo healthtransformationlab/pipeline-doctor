@@ -74,6 +74,15 @@ reg = forecast.load_credential_register("ops/secrets_register.yaml")
 print(forecast.forecast_all(cfg, "2026-10-29", register=reg, history=runs))
 ```
 
+## Alerting: route now, batch the rest
+
+Every row from the doctor or the forecaster is an alert with a severity, an owner and an action. `digest`
+routes them by the ladder: SEV1 and SEV2 go out now, one message each; SEV3 into a daily digest; SEV4 into
+a weekly one. A digest is one message per owner per period, grouped by severity then subject, each problem
+once with a count and the pipelines it touches, carried until closed; a SEV2 still open at the next digest
+is flagged "fix the cause or lower the level". `render` writes the plain-text message; sending it (email,
+chat) is the adopting project's job.
+
 ## Is it actually working?
 
 - **Offline:** past incidents with the on-call's final decision are free labels, fifty to a few hundred to start. `evaluate` reports
