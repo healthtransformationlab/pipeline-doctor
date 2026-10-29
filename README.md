@@ -9,6 +9,14 @@ automatic, and a switch-off test that measures what each table contributes.
 
 ## The claim, and how it is tested
 
+Five ingredients make a data platform operable by an agent, and the switch-off test below measures each one
+separately: (1) a **metadata-driven framework**, the four tables as the system of record; (2) **consistent
+conventions**, typed names, singular tables, every change traced to an issue; (3) **configuration
+management**, one declaration per setting, a secrets register with expiry dates, a dependency inventory;
+(4) **OpenTelemetry on every call**, the full call stack with depth, timing and cost; and (5), because of
+the first four, **forecasting**: failures predicted with a date, not only classified after the fact.
+
+
 Most of what breaks in production is a configuration-management failure, not a code failure: a setting that
 differs between environments, a credential that expired, a model or dependency that was deprecated, a
 vulnerability advisory. Those are invisible in logs until the damage is done and visible in tables before
