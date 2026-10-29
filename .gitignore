@@ -3,3 +3,7 @@ __pycache__/
 .pytest_cache/
 build/
 dist/
+
+# Kaggle Benchmarks SDK run files (one per run; written where the task runs)
+*.run.json
+*.task.json

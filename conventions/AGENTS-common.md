@@ -16,6 +16,21 @@ settings, credentials and decisions are all records is one an agent can operate.
 - **Label simulated output as simulated.** Never present a dry run as a result. Every number in a doc comes
   from a run in the repo or a cited source, with its interval where it has one.
 
+## Each repository's own AGENTS.md
+
+Adapted from Kaggle's `kaggle-benchmarks` AGENTS.md, whose shape makes an agent read the owning file before
+touching a concern instead of grepping for it. These sections, in this order, then the repo's own rules:
+
+1. **Project context**: what the repo is in two sentences, and its tech stack.
+2. **Mental model**: one bold sentence saying what goes in, what comes out, and what decides it.
+3. **Sources of truth (the map)**: a table, *concern -> file that owns it*: configuration, the public API
+   surface, each subsystem, tests and fixtures, docs. A concern with no owning file is a design gap to fix,
+   not a row to leave out.
+4. **Critical implementation rules**: the few things that break silently (generated files never edited by
+   hand; the package manager to use; the one decorator every public function needs).
+5. **Operational commands**: setup, test, lint, build, deploy; each a copy-pasteable line with a comment.
+6. **Agent skills**: skills the repo ships or expects, and when to load them.
+
 ## When a change needs a spec
 
 Anything that changes a dataset, a metric, a rule or a workflow gets a spec first: `specs/NNN-name/spec.md`
