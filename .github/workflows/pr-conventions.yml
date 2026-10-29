@@ -1,0 +1,27 @@
+# Reusable: every pull request's branch is named <type>/<issue>-<slug> and its description links the issue.
+# Call it from another repo with
+#   jobs:
+#     conventions:
+#       uses: healthtransformationlab/pipeline-doctor/.github/workflows/pr-conventions.yml@main
+name: Check the branch name and issue link
+on:
+  workflow_call:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: healthtransformationlab/pipeline-doctor
+          path: pipeline-doctor
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - name: Branch name and issue link
+        env:
+          BRANCH: ${{ github.head_ref }}
+          BODY: ${{ github.event.pull_request.body }}
+        run: python pipeline-doctor/conventions/scripts/pr_conventions.py

@@ -43,6 +43,8 @@ deviation, visible to consumers, not just engineers.
 
 ## The ladder (one failure class at a time)
 
+The ladder handles failures that have happened; the forecaster (below) handles the ones that have not yet.
+
 1. **Deterministic**: retry with backoff, rerun an idempotent step, hold downstream. No AI.
 2. **Classify** by rules, in order. Configuration-management classes first: `credential_expiry`,
    `vulnerability`, `deprecation`, `config_drift`, `config`. Then `platform`, `schema_drift`,
@@ -55,6 +57,22 @@ deviation, visible to consumers, not just engineers.
 
 **Agents recommend; code acts.** Anything that changes data goes through an approval step with a fallback
 to the old manual path; the loop is drawn tighter where the action is irreversible.
+
+## Forecasting: the failure before it happens
+
+A log can only say what broke. The same tables say what is about to break, and when. `forecast` reads a
+credential register (expiry dates, never values), a dependency inventory (end-of-support dates for models,
+packages, endpoints) and the run table's duration and cost trend, and returns alert rows: subject, predicted
+failure class, predicted date, days until, severity from the days ladder (SEV2 within 7 days, SEV3 within
+30, SEV4 within 90, SEV1 once past), owner, action, evidence. An unknown expiry is itself a SEV4 finding.
+A cost line that crosses the budget in three runs is a `cost_anomaly` three days out, not a surprise on the
+invoice. Performance and cost are OpenTelemetry metrics on every run, so the trend is always there to read.
+
+```python
+from pipeline_doctor import forecast
+reg = forecast.load_credential_register("ops/secrets_register.yaml")
+print(forecast.forecast_all(cfg, "2026-10-29", register=reg, history=runs))
+```
 
 ## Is it actually working?
 
