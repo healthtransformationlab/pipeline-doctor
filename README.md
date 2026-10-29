@@ -7,26 +7,27 @@ automatic, and a switch-off test that measures what each table contributes.
 > example incidents are from a public synthetic-data project; nothing here is any organization's platform,
 > incident or plan.
 
-## The claim, and how it is tested
+## The claim, in one table
 
-Five ingredients make a data platform operable by an agent, and the switch-off test below measures each one
-separately: (1) a **metadata-driven framework**, the four tables as the system of record; (2) **consistent
-conventions**, typed names, singular tables, every change traced to an issue; (3) **configuration
-management**, one declaration per setting, a secrets register with expiry dates, a dependency inventory;
-(4) **OpenTelemetry on every call**, the full call stack with depth, timing and cost; and (5), because of
-the first four, **forecasting**: failures predicted with a date, not only classified after the fact.
+Most of what breaks in production is a configuration problem, not a code problem, and it shows up in
+tables before it shows up in logs. So an agent that reads the tables first fixes most incidents by rules.
+That is a claim about a share, so it is measured: hide each ingredient and record what the rules can still do.
 
+| Ingredient | In one line | Hide it and… |
+|---|---|---|
+| Metadata-driven | pipelines, runs, lineage, runbook are tables | no failure's impact can be named |
+| Conventions | typed names; every change traced to an issue | classification drops from 100% to 67% |
+| Configuration management | one place per setting; credentials and dependencies with expiry dates | expiry and drift become invisible |
+| Telemetry | every call records timing and cost | cost anomalies vanish |
+| Forecasting | the four above predict failures, with a date | you only hear about it after it breaks |
 
-Most of what breaks in production is a configuration-management failure, not a code failure: a setting that
-differs between environments, a credential that expired, a model or dependency that was deprecated, a
-vulnerability advisory. Those are invisible in logs until the damage is done and visible in tables before
-it: a secrets register with expiry dates, one declaration per setting, a model and dependency inventory, a
-run table with the OpenTelemetry call stack (depth, timing, cost) attached. So an agent that reads the
-tables first resolves most incidents by rules, and the LLM is reserved for what the rules cannot name.
+<details>
+<summary>What this replaces</summary>
 
-That is a claim about a share, so it is measured, not asserted: the switch-off test below hides each table
-in turn and records what the rules can still do without it. The anti-pattern this replaces: dumping the
-whole log into the prompt. Context engineering is choosing which rows.
+Dumping the whole log into the prompt. Context engineering is choosing which rows; with the tables above
+the LLM is reserved for what the rules cannot name.
+
+</details>
 
 ## The four tables (the agent's entire context)
 
