@@ -109,3 +109,39 @@ def test_forecast_combines_and_sorts_soonest_first(register, config):
     assert f.iloc[0]["subject_name"] == "expired"               # negative days first
     days = f["days_until_count"].dropna().tolist()
     assert days == sorted(days)
+
+
+def test_a_dependency_marked_deprecated_without_a_date_is_a_sev3(config):
+    inv = pd.DataFrame([{"dependency_name": "old endpoint", "dependency_kind_code": "endpoint", "end_of_support_date": "",
+                         "support_status_code": "deprecated", "used_by_text": "llm_judge", "owner_name": "repo owner"}])
+    f = fc.deprecation_forecast(inv, config, TODAY)
+    assert len(f) == 1 and f.iloc[0]["severity_code"] == "SEV3" and f.iloc[0]["pipeline_name"] == "llm_judge"
+
+
+def _vol(pipeline, counts, start="2026-10-01"):
+    t0 = pd.Timestamp(start, tz="UTC")
+    return pd.DataFrame([{"pipeline_name": pipeline, "run_status_code": "ok", "ended_ts": t0 + pd.Timedelta(days=i),
+                          "row_out_count": c, "schema_sha256": "abc"} for i, c in enumerate(counts)])
+
+
+def test_volume_forecast_sees_a_shrinking_feed_before_it_crosses_the_bound(config):
+    h = _vol("load_results", [240, 240, 240, 240, 200, 180, 160, 140])   # heading for 120 (0.5 × 240)
+    f = fc.volume_forecast(h, config, TODAY)
+    assert len(f) == 1
+    row = f.iloc[0]
+    assert row["predicted_failure_class_code"] == "volume_anomaly" and row["days_until_count"] <= 2
+    assert row["severity_code"] == "SEV2"
+
+
+def test_volume_forecast_is_quiet_for_a_steady_feed(config):
+    assert fc.volume_forecast(_vol("load_results", [240] * 8), config, TODAY).empty
+
+
+def test_schema_change_forecast_flags_a_source_that_keeps_changing(config):
+    h = _vol("load_results", [240] * 6)
+    h["schema_sha256"] = ["a", "a", "b", "b", "c", "c"]
+    f = fc.schema_change_forecast(h, config, TODAY)
+    assert len(f) == 1 and f.iloc[0]["predicted_failure_class_code"] == "schema_drift"
+    assert f.iloc[0]["severity_code"] == "SEV4" and "2 times" in f.iloc[0]["evidence_text"]
+    h["schema_sha256"] = ["a", "a", "a", "a", "b", "b"]
+    assert fc.schema_change_forecast(h, config, TODAY).empty          # one change is a change, not drift

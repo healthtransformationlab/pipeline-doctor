@@ -8,7 +8,9 @@ A log can only tell you what broke. Three tables tell you what is about to break
     dependency inventory  one row per model, package or endpoint with an end-of-support or deprecation date:
                           a `deprecation` failure on that date.
     run table trend       duration and cost over the trailing ok runs: a line through them says when a
-                          pipeline will breach its SLA or its budget (`cost_anomaly` / `source_late`).
+                          pipeline will breach its SLA or its budget (`cost_anomaly` / `source_late`);
+                          row counts drifting toward the volume bounds (`volume_anomaly`); a schema hash that
+                          keeps changing (`schema_drift`, advisory).
 
 Severity follows the days-to-event ladder (SEV2 within 7 days, SEV3 within 30, SEV4 within 90; SEV1 when
 the date has passed for a scheduled pipeline), so a forecast row is an alert with an owner and an action,
@@ -17,6 +19,7 @@ not a guess.
 
 from __future__ import annotations
 
+import itertools
 import math
 from pathlib import Path
 
@@ -109,7 +112,17 @@ def deprecation_forecast(inventory: pd.DataFrame, config: pd.DataFrame, today) -
     rows = []
     for _, d in inventory.iterrows():
         eos = _date(d.get("end_of_support_date"))
+        status = str(d.get("support_status_code", "") or "").strip().lower()
         if eos is None:
+            if status != "deprecated":
+                continue
+            users = [p for p in config["pipeline_name"] if p in str(d.get("used_by_text", ""))] or [None]
+            for p in users:
+                rows.append({"subject_name": d["dependency_name"], "subject_kind_code": d.get("dependency_kind_code", "dependency"),
+                             "pipeline_name": p, "predicted_failure_class_code": "deprecation",
+                             "predicted_date": None, "days_until_count": None, "severity_code": "SEV3",
+                             "recommended_action_code": "hold_downstream", "owner_name": d.get("owner_name"),
+                             "evidence_text": "marked deprecated with no end-of-support date: plan the replacement"})
             continue
         users = [p for p in config["pipeline_name"] if p in str(d.get("used_by_text", ""))] or [None]
         days = (eos - today).days
@@ -174,6 +187,74 @@ def trend_forecast(history: pd.DataFrame, config: pd.DataFrame, today, n: int = 
 
 
 @traced
+def volume_forecast(history: pd.DataFrame, config: pd.DataFrame, today, n: int = 10,
+                    bounds: tuple[float, float] = (0.5, 2.0)) -> pd.DataFrame:
+    """Per pipeline, a line through the last `n` ok runs' row_out_count against the median of the first half:
+    if it crosses the volume bounds within 90 days, a `volume_anomaly` is forecast for that date."""
+    today = _date(today)
+    rows = []
+    for _, c in config.iterrows():
+        h = history[(history["pipeline_name"] == c["pipeline_name"]) & (history["run_status_code"] == "ok")]
+        if len(h) < 4 or "row_out_count" not in h:
+            continue
+        h = h.assign(_t=pd.to_datetime(h["ended_ts"], utc=True)).sort_values("_t").tail(n)
+        y = pd.to_numeric(h["row_out_count"], errors="coerce").dropna().to_numpy(dtype=float)
+        if len(y) < 4:
+            continue
+        base = float(np.median(y[: max(2, len(y) // 2)]))
+        if base <= 0:
+            continue
+        slope, last = _slope(y), float(y[-1])
+        gaps = h["_t"].diff().dropna().dt.total_seconds() / 86400
+        cadence_days = float(gaps.median()) if len(gaps) else 1.0
+        lo, hi = bounds[0] * base, bounds[1] * base
+        if last <= lo or last >= hi:
+            runs = 0.0
+        elif slope < 0:
+            runs = (last - lo) / -slope
+        elif slope > 0:
+            runs = (hi - last) / slope
+        else:
+            continue
+        days = runs * max(cadence_days, 0.0)
+        sev = _severity(days)
+        if sev is None:
+            continue
+        rows.append({"subject_name": c["pipeline_name"], "subject_kind_code": "pipeline",
+                     "pipeline_name": c["pipeline_name"], "predicted_failure_class_code": "volume_anomaly",
+                     "predicted_date": (today + pd.Timedelta(days=days)).date().isoformat(),
+                     "days_until_count": round(days), "severity_code": sev, "recommended_action_code": "hold_downstream",
+                     "owner_name": c.get("owner_name"),
+                     "evidence_text": f"row_out_count last {last:.0f} vs baseline {base:.0f}, slope {slope:+.3g} per run over {len(y)} runs"})
+    return pd.DataFrame(rows, columns=FORECAST_COLUMNS)
+
+
+@traced
+def schema_change_forecast(history: pd.DataFrame, config: pd.DataFrame, today, n: int = 10,
+                           min_changes: int = 2) -> pd.DataFrame:
+    """Per pipeline, how often the output schema hash changed over the last `n` ok runs. Two or more changes
+    is a source that drifts: a SEV4 advisory to set the schema mode deliberately (rescue or fail on new
+    columns) before the next change arrives unannounced."""
+    _ = _date(today)
+    rows = []
+    for _, c in config.iterrows():
+        h = history[(history["pipeline_name"] == c["pipeline_name"]) & (history["run_status_code"] == "ok")]
+        if len(h) < 3 or "schema_sha256" not in h:
+            continue
+        h = h.assign(_t=pd.to_datetime(h["ended_ts"], utc=True)).sort_values("_t").tail(n)
+        shas = [str(x) for x in h["schema_sha256"].tolist() if str(x) not in ("", "nan", "None", "<NA>")]
+        changes = sum(1 for a, b in itertools.pairwise(shas) if a != b)
+        if changes < min_changes:
+            continue
+        rows.append({"subject_name": c["pipeline_name"], "subject_kind_code": "pipeline",
+                     "pipeline_name": c["pipeline_name"], "predicted_failure_class_code": "schema_drift",
+                     "predicted_date": None, "days_until_count": None, "severity_code": "SEV4",
+                     "recommended_action_code": "hold_downstream", "owner_name": c.get("owner_name"),
+                     "evidence_text": f"schema changed {changes} times in the last {len(shas)} ok runs: set the schema mode deliberately"})
+    return pd.DataFrame(rows, columns=FORECAST_COLUMNS)
+
+
+@traced
 def forecast_all(config: pd.DataFrame, today, register: pd.DataFrame | None = None,
              inventory: pd.DataFrame | None = None, history: pd.DataFrame | None = None) -> pd.DataFrame:
     """All forecasts, soonest first. Each row is an alert: subject, predicted class and date, severity,
@@ -185,6 +266,8 @@ def forecast_all(config: pd.DataFrame, today, register: pd.DataFrame | None = No
         parts.append(deprecation_forecast(inventory, config, today))
     if history is not None and len(history):
         parts.append(trend_forecast(history, config, today))
+        parts.append(volume_forecast(history, config, today))
+        parts.append(schema_change_forecast(history, config, today))
     if not parts:
         return pd.DataFrame(columns=FORECAST_COLUMNS)
     out = pd.concat(parts, ignore_index=True)

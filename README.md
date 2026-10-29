@@ -66,7 +66,9 @@ packages, endpoints) and the run table's duration and cost trend, and returns al
 failure class, predicted date, days until, severity from the days ladder (SEV2 within 7 days, SEV3 within
 30, SEV4 within 90, SEV1 once past), owner, action, evidence. An unknown expiry is itself a SEV4 finding.
 A cost line that crosses the budget in three runs is a `cost_anomaly` three days out, not a surprise on the
-invoice. Performance and cost are OpenTelemetry metrics on every run, so the trend is always there to read.
+invoice; a feed shrinking toward half its baseline is a `volume_anomaly` with a date; a schema hash that
+changed twice in the last ten runs is a `schema_drift` advisory to set the schema mode deliberately; a
+dependency marked deprecated with no date is a SEV3 to plan the replacement. Performance and cost are OpenTelemetry metrics on every run, so the trend is always there to read.
 
 ```python
 from pipeline_doctor import forecast
