@@ -11,7 +11,8 @@ dependencies = ["pandas>=2.2", "pyyaml>=6"]
 [project.optional-dependencies]
 dev = ["pytest>=8"]
 # PipelineDoctorBench as a Kaggle Benchmarks task (pipeline_doctor.kbench, kaggle/pipeline_doctor_task.py)
-kbench = ["kaggle-benchmarks>=0.6", "pydantic>=2"]
+# hishel<2: kaggle-benchmarks 0.6.2 uses hishel.BaseFilter, which hishel 2 removed (the import fails without the pin)
+kbench = ["kaggle-benchmarks>=0.6", "pydantic>=2", "hishel<2"]
 
 [project.urls]
 Homepage = "https://github.com/healthtransformationlab/pipeline-doctor"
