@@ -151,4 +151,4 @@ first adopter is [health-transformation-lab-nlp](https://github.com/healthtransf
 logging → observability · process → operational decisioning · metadata-driven → reusable patterns, the
 context layer · a runbook → next best action · a human approving → human review and fallback paths.
 
-MIT. Owner John Bowyer.
+Apache 2.0 ([LICENSE](LICENSE)). Owner John Bowyer.
