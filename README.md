@@ -94,6 +94,20 @@ once with a count and the pipelines it touches, carried until closed; a SEV2 sti
 is flagged "fix the cause or lower the level". `render` writes the plain-text message; sending it (email,
 chat) is the adopting project's job.
 
+## Cost across projects
+
+Several projects on one Databricks account share its budget and, on Free Edition, its daily limit. `billing` prices
+usage from Databricks' own billing tables at the list price in effect, per job run (`billing_costs`) and per project per
+day (`project_costs`), splitting by each job's `project` tag. Anything with an unpriced line has no cost, never a
+partial one, and the SKU is named. The ops console over it is spec 001 US3.
+
+```python
+from pipeline_doctor import billing
+usage = spark.sql(billing.USAGE_SQL.format(schema="ops.billing", days=30)).toPandas()
+prices = spark.sql(billing.PRICES_SQL.format(schema="ops.billing")).toPandas()
+daily, unpriced = billing.project_costs(usage, prices, billing.job_projects(jobs_api_list))
+```
+
 ## Is it actually working?
 
 - **Offline:** past incidents with the on-call's final decision are free labels, fifty to a few hundred to start. `evaluate` reports
