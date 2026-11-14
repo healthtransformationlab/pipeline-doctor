@@ -55,6 +55,7 @@ out; the rules decide, and the LLM is reserved for `unknown`.**
 | The switch-off test and its conditions | `doctor.ABLATIONS`, `doctor.ablation`, `tests/test_doctor.py` |
 | Forecasting (secrets register, dependency inventory) | `forecast.py`, `tests/test_forecast.py` |
 | Alert routing and digests | `digest.py`, `tests/test_digest.py` |
+| Cost from Databricks billing, per run and per project (spec 001) | `billing.py`, `tests/test_billing.py` |
 | PipelineDoctorBench (the switch-off test on real models) | `kbench.py`, `kaggle/pipeline_doctor_task.py`, `tests/test_kbench.py` |
 | Tracing (`@traced` shim; adopters swap in theirs) | `_tracing.py` |
 | The incident set, config, runbook, lineage | `examples/health-transformation-lab-nlp/` |

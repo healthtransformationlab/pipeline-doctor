@@ -97,6 +97,9 @@ Every alert names a severity, an owner and an action. Without an action it isn't
 - **Retries are set explicitly** per task, only for failures that can pass on their own; a bad setting or
   bad data fails at once.
 - **A failure says how it ended** (exit code, signal, memory) and is logged where it survives the process.
+- **Every Databricks job carries the tag `project`**, the repository name (`project: open-navigator`), set once in
+  the bundle (`presets.tags`). Billing records the job, so the tag splits cost by project without a lookup table
+  (`pipeline_doctor.billing.project_costs`); an untagged job counts as `untagged`.
 - **Every run is a row**: pipeline, step, timings, counts, schema hash, checks, error type, duration, cost,
   with the OpenTelemetry span header (service, data product, environment). That row is what the doctor reads.
 

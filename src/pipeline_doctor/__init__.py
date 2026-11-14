@@ -1,8 +1,10 @@
 """pipeline-doctor: DataOps for data pipelines. Four metadata tables, a rules-first remediation ladder,
 graduation to automatic, a switch-off test of what each table contributes, and a forecaster for the
-failures that have not happened yet (credential expiry, deprecation, duration and cost trends)."""
+failures that have not happened yet (credential expiry, deprecation, duration and cost trends), and cost per run
+and per project from Databricks billing."""
 
-from . import digest, doctor, forecast
+from . import billing, digest, doctor, forecast
+from .billing import billing_costs, job_projects, project_costs
 from .doctor import (
     ABLATIONS,
     CLASSES,
@@ -40,6 +42,8 @@ __all__ = [
     "SIGNAL_NAMES",
     "ablation",
     "baseline_history",
+    "billing",
+    "billing_costs",
     "classify",
     "credential_forecast",
     "deprecation_forecast",
@@ -49,16 +53,18 @@ __all__ = [
     "forecast",
     "forecast_all",
     "graduation",
+    "job_projects",
     "load_config",
     "load_credential_register",
     "load_dependency_inventory",
     "load_incidents",
     "load_lineage",
     "load_runbook",
+    "project_costs",
     "recommend",
     "schema_change_forecast",
     "signals",
     "trend_forecast",
     "volume_forecast",
 ]
-__version__ = "0.4.0"
+__version__ = "0.5.0"
