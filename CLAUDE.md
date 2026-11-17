@@ -16,3 +16,10 @@ This file adds only Claude Code's own workflow.
 | Each task | Superpowers `test-driven-development` | failing test → code → passing test |
 | Before saying done | Superpowers `verification-before-completion` | commands run, output checked |
 | Open a PR | `conventions/pull_request_template.md`, `Closes #<issue>` | PR + `pull_requests/pr-<n>-review.md` |
+
+
+## Times
+
+When you tell the owner a time, in chat, in a status cell or in a message, write it in 12-hour form with AM or PM, in
+UTC with Central time beside it: "12:02 AM UTC (6:02 PM Central)". The owner asked for this on November 17, 2026
+("give all utc times in am pm all chats"). Files, logs, tables, commit messages and code keep ISO 8601 UTC.
